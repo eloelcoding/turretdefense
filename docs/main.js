@@ -9,6 +9,12 @@ let angleToMob;
 
 const STOPSIGN = "."
 
+const config = {
+  'PATH': "RRUUUUUUURRRRDDDDRRRRUUUUUUURRRRDDDDDDDDRRR",
+}
+
+const IMAGE_DIR = "assets/images/"
+
 class Enemy {
   constructor(startX, startY) {
     this.x = startX;
@@ -49,7 +55,7 @@ class Enemy {
         this.alive = false;
         game.takeHit();
       }
-      else if (currentDirection != STOPSIGN) throw new Error("Wrong character!")
+      else throw new Error("Wrong character!")
       // Move to the next direction if possible
       if (index < this.directions.length - 1) {
         this.currentDirectionIndex++;
@@ -74,26 +80,29 @@ class Turret{
     this.size = 60
     this.x = x
     this.y = y
-      setInterval(this.shoots, 500*this.speed)
+    this.startShooting();
+  }
+
+  startShooting() {
+    setInterval(this.shoots, 500*this.speed)
   }
   
   shoots() {
-  var target = targetEnemy();
-  if (!target) return
-  target.hit()
-  push()
-  fill(300,100,0)
-  rect(350,100,100,100)
-  pop()
+    var target = targetEnemy();
+    if (!target) return
+    target.hit()
+    push()
+    fill(300,100,0)
+    rect(350,100,100,100)
+    pop()
 }
   
   draw(){
-       push();
-  translate(this.x, this.y); // Move the image to the center of rotation
-  rotate(angleToMob); // Rotate the turret to face the mob
-  image(img, 0, 0, this.size * 2, this.size * 1.5);
-  pop();
-  
+    push();
+    translate(this.x, this.y); // Move the image to the center of rotation
+    rotate(angleToMob); // Rotate the turret to face the mob
+    image(img, 0, 0, this.size * 2, this.size * 1.5);
+    pop();
   }
   
 }
@@ -113,7 +122,7 @@ class Path {
     rect(x,y,size);
     this.path.forEach(p => {
       if(p == "R")
-          x += size
+        x += size
       if(p == "L")
         x -= size;
       if(p == "U")
@@ -149,8 +158,7 @@ function setup() {
   createCanvas(700, 550);
   imageMode(CENTER);
   rectMode(CENTER);
-  pathKey = "RRUUUUUUURRRRDDDDRRRRUUUUUUURRRRDDDDDDDDRRR"
-  path = new Path(pathKey,20,500,40);
+  path = new Path(config["PATH"],20,500,40);
   hits = 0
   enemies = [];
   game = new Game();
@@ -162,14 +170,14 @@ function setup() {
 }
 
 function preload() {
-  img = loadImage("assets/images/turret.png");
-  img2 = loadImage("assets/images/bullet.png");
+  img = loadImage(IMAGE_DIR + "turret.png");
+  img2 = loadImage(IMAGE_DIR  + "bullet.png");
 }
 
 function createEnemy() {
   print("Creating enemy")
   var newEnemy = new Enemy(path.x, path.y);
-  newEnemy.setDirections(pathKey);
+  newEnemy.setDirections(config["PATH"]);
   enemies.push(newEnemy);
 }
 
@@ -185,7 +193,6 @@ function targetEnemy() {
 function draw() {
   background(200, 220);
   path.draw();
-  
   turret.draw()
 
   enemies.map(enemy => {
@@ -193,12 +200,12 @@ function draw() {
     enemy.move()
   })
 
-    game.draw();
+  game.draw();
 
   var enemyToShoot = targetEnemy();
   if(!enemyToShoot) return;
+
   let dx = enemyToShoot.x - turret.x;
   let dy = enemyToShoot.y - turret.y;
   angleToMob = atan2(dy, dx);
-  
 }
