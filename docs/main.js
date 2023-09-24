@@ -69,12 +69,24 @@ class Enemy {
 class Turret{
   constructor(x, y){
     this.damage = 1
-    this.speed = 10
+    this.speed = 1
     this.range = 100
     this.size = 60
     this.x = x
     this.y = y
+      setInterval(this.shoots, 500*this.speed)
   }
+  
+  shoots() {
+  var target = targetEnemy();
+  if (!target) return
+  target.hit()
+  push()
+  fill(300,100,0)
+  rect(350,100,100,100)
+  pop()
+}
+  
   draw(){
        push();
   translate(this.x, this.y); // Move the image to the center of rotation
@@ -146,7 +158,6 @@ function setup() {
   
   createEnemy();
   setInterval(createEnemy, 400);
-  setInterval(shoots, 500)
   turret = new Turret(340,300)
 }
 
@@ -160,16 +171,6 @@ function createEnemy() {
   var newEnemy = new Enemy(path.x, path.y);
   newEnemy.setDirections(pathKey);
   enemies.push(newEnemy);
-}
-
-function shoots() {
-  var target = targetEnemy();
-  if (!target) return
-  target.hit()
-  push()
-  fill(300,100,0)
-  rect(350,100,100,100)
-  pop()
 }
 
 function targetEnemy() {
