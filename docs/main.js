@@ -1,243 +1,203 @@
-let images;
-let wireFrames = config.wireFrame;
-let spriteCache, imageCache;
-let sounds;
-let dropdown;
+let img;
+let img2;
+let rotationAngle = 0;
+let bullets = []; // Array to store bullets
+let game;
+let enemies;
+let pathkey;
+let angleToMob;
 
-function preload() {
+const STOPSIGN = "."
 
-  images = {}
-  Object.keys(config.images).map(name => {
-    print("Loading image " + name);
-    images[name] = loadImage(config.images[name]);
-  })
-  sounds = {};
-  Object.keys(config.sounds).map(name => {
-    var sound = loadSound(config.sounds[name]);
-    sounds[name] = _.throttle(() => sound.play(), 1000);
-  })
-}
-
-
-
-function mouseReleased() {
-  MatterObject.mouseReleased();
-}
-
-function mouseDown() {
-  logIt("Mouse pressed");
-  MatterObject.mouseDown();
-}
-
-
-function setupWorld() {
-  engine = Engine.create();
-  world = engine.world;
-  print(world.gravity.y);
-  world.gravity.y = config.gravity;
-
-  Matter.Runner.run(engine);
-}
-
-function refreshMapDropDown(dropdown) {
-  MapSaver.listMaps().then(data => {
-    // need to find out how to wipe out all options
-    // dropdown.remove()
-    data.map(m => dropdown.option(m))
-  })
-}
-
-function saveMap(chooseName) {
-  var name;
-  if (chooseName)
-    name = prompt("Name your map");
-  else
-    name = dropdown.value();
-  MapSaver.saveMap(name, Game.grid.serialize());
-  refreshMapDropDown(dropdown);
-}
-
-function deleteMap(chooseName) {
-  var name;
-  if (!chooseName)
-    name = prompt("Name your map");
-  else
-    name = dropdown.value();
-  MapSaver.deleteMap(name);
-  refreshMapDropDown(dropdown);
-}
-
-
-
-function createGUI() {
-
-  var buttons = [
-    { label: "←", position: [20, 40], size: [30, 25], action: scrollLeft },
-    { label: "→", position: [55, 40], size: [30, 25], action: scrollRight },
-    { label: "💾", position: [500, 10], size: [30, 25], action: () => saveMap(false) },
-    { label: "💾 As...", position: [530, 10], size: [70, 25], action: () => saveMap(true) },
-  ];
-
-  buttons.map(data => {
-    var button = createButton(data.label);
-    button.position(...data.position);
-    button.size(...data.size);
-    button.mousePressed(data.action);
-  })
-
-  //deactive inspect right click menu thing
-  canvas = document.querySelector('canvas');
-  canvas.addEventListener('contextmenu', event => event.preventDefault());
-  if (!config.showGUI) return;
-
-  dropdown = createSelect();
-  refreshMapDropDown(dropdown)
-  dropdown.changed(async () => {
-    var mapName = dropdown.value();
-    if (!mapName) {
-      console.log("Could not load map ", mapName);
-      return;
-    }
-    var map = await MapSaver.loadMap(dropdown.value());
-    console.log(map.encodedMap)
-    await Game.grid.applyMap(map.encodedMap);
-  });
-  dropdown.position(400, 10);
-  dropdown.size(100, 25);
-
-  slider = createSlider(50, 500, 50, 50);
-  slider.position(170, 10);
-  slider.style('width', '200px');
-
-  checkbox = createCheckbox('Wireframes', wireFrames);
-  checkbox.position(10, 10);
-  checkbox.changed(onChange);
-}
-
-function onChange() {
-  wireFrames = !wireFrames;
-}
-
-function mousePressed() {
-  if (mouseButton === RIGHT) {
-    var game = Game;
-    if (game.grid.mouseIsOnBlock()) return
-    game.grid.addItem(game.inventory.selectedIdx)
-    console.log("Right-click detected");
-  }
-}
-
-function keyPressed() {
-  if (key == " ") {
-    wireFrames = !wireFrames;
-  }
-  if (key >= '1' && key <= '9') {
-    Game.inventory.setActive(float(key) - 1);
-  }
-}
-
-function createCache() {
-  var spriteIndex = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-  spriteCache = {};
-  spriteIndex.map(index => {
-    spriteCache[index] = images.sprites.get(index * 10, 0, 10, 10)
-  })
-
-  imageCache = {};
-  var mapBlocks = 10;
-  var blockSize = images.blocks.width / mapBlocks;
-
-  Object.keys(config.blockTypesMap).map(type => {
-    imageCache[type] = images.blocks.get(type * blockSize, 0, blockSize, images.blocks.height)
-  })
-}
-
-
-
-async function setup() {
-  createCache();
-  rectMode(CENTER);
-  imageMode(CENTER);
-  setupWorld();
-  t = 0; fr = 0;
-  setInterval(() => { fr = frameRate() }, 500);
-  var pctScreenSize = .8;
-  config.canvas = { width: windowWidth * pctScreenSize, height: windowHeight * pctScreenSize }
-  createCanvas(config.canvas.width, config.canvas.height);
-  createGUI();
-
-  var grid = new Grid(
-    config.grid.translate.x,
-    config.grid.translate.y,
-    config.grid.rows,
-    config.grid.cols,
-    config.grid.blockSize
-  );
-
-  var player = new Player(images.sprites, config.player.x, config.player.y);
-  Game.create(grid, player);
-  try {
-    var map = await MapSaver.loadMap(config.startingMap);
-    await Game.loadSettings(map);
-  }
-  catch {}
-
-  setInterval(centerPlayerToMiddle, 5);
-}
-
-function centerPlayerToMiddle() {
-  return;
-  var playerPosition = player.absolutePosition().x;
-  var middle = windowWidth / 2;
-  var centeringSpeed = 0.005;
-  var translation = 0;
-  if (abs(playerPosition - middle) > 100)
-    translation = centeringSpeed * (middle - playerPosition)
-
-  MatterObject.translate(translation, 0);
-}
-
-function scrollRight() {
-  t -= slider.value();
-  print("Scrolling")
-  MatterObject.translate(-slider.value(), 0)
-}
-function scrollLeft() {
-  t += slider.value();
-  print("Scrolling")
-  MatterObject.translate(slider.value(), 0)
-}
-
-function draw() {
-  background(...config.backgroundColor);
-  if (config.showGUI) {
-    text(floor(fr), 150, 25);
+class Enemy {
+  constructor(startX, startY) {
+    this.x = startX;
+    this.y = startY;
+    this.size = 30;
+    this.alive = true;
+    this.health = 1
+    this.moveAmount = 40;
+    this.directions = ''; // Store the directions as a string
+    this.currentDirectionIndex = 0; // Track the current direction
   }
 
-  MatterObject.draw(wireFrames);
+  setDirections(directions) {
+    // Set the directions for the enemy to follow
+    this.directions = directions + STOPSIGN
+    this.currentDirectionIndex = 0; // Reset the direction index
+  }
+  
+  hit(){
+    this.health -= 1
+    if(this.health == 0) this.alive = false
+    print("hit")
+  }
+  
+  move() {
+    if (!this.alive) return;
+    if (this.directions.length > 0) {
+      // Get the current direction
+      var slowDown = 10;
+      var index = floor(this.currentDirectionIndex/slowDown);
+      const currentDirection = this.directions[index];
 
-  // cursor
-  var grid = Game.grid;
-  if (!grid.mouseIsOnBlock()) {
-    var coordinates = grid.snappedXYcoordinates();
-    var snapGrid = config.grid.snap;
-    if (coordinates != undefined) {
-      var block = grid.activeBlock();
-      if(block.isNearPlayer()) {
-        push()
-        if (snapGrid)
-          translate(coordinates.x, coordinates.y);
-        else
-          translate(mouseX, mouseY);
-        var scaling = 1 / 15 * config.grid.blockSize / 20;
-        scale(scaling, scaling)
-        image(imageCache[Game.inventory.selected], 0, 0);
-        pop();
+      if (currentDirection === 'R') this.x += this.moveAmount / slowDown;
+      else if (currentDirection === 'L') this.x -= this.moveAmount / slowDown;
+      else if (currentDirection === 'D') this.y += this.moveAmount / slowDown;
+      else if (currentDirection === 'U') this.y -= this.moveAmount / slowDown;
+      else if (currentDirection === STOPSIGN) { 
+        this.alive = false;
+        game.takeHit();
+      }
+      else if (currentDirection != STOPSIGN) throw new Error("Wrong character!")
+      // Move to the next direction if possible
+      if (index < this.directions.length - 1) {
+        this.currentDirectionIndex++;
       }
     }
   }
-  Game.player.checkMovement()
-  if (mouseIsPressed)
-    mouseDown();
-  Game.draw()
+
+  draw() {
+    if(!this.alive) return
+    push()
+    fill(100)
+    rect(this.x, this.y, this.size, this.size);
+    pop();
+  }
+}
+
+class Turret{
+  constructor(x, y){
+    this.damage = 1
+    this.speed = 10
+    this.range = 100
+    this.size = 60
+    this.x = x
+    this.y = y
+  }
+  draw(){
+       push();
+  translate(this.x, this.y); // Move the image to the center of rotation
+  rotate(angleToMob); // Rotate the turret to face the mob
+  image(img, 0, 0, this.size * 2, this.size * 1.5);
+  pop();
+  
+  }
+  
+}
+  
+class Path {
+  constructor(path, x, y, size) {
+    this.path = path.split("")
+    this.x = x
+    this.y = y
+    this.size = size;
+  }
+  
+  draw() {
+    var x = this.x;
+    var y = this.y;
+    var size = this.size;
+    rect(x,y,size);
+    this.path.forEach(p => {
+      if(p == "R")
+          x += size
+      if(p == "L")
+        x -= size;
+      if(p == "U")
+        y -= size;
+      if(p == "D")
+        y += size
+
+      rect(x,y,size,size);
+    })
+  }
+  
+}
+
+class Game {
+  constructor() {
+    this.score = 10
+  }
+  
+  takeHit() {
+    this.score--;
+  }
+  
+  gameOver() {
+    return this.score <= 0;
+  }
+  
+  draw() {
+    text(this.score,10,20)
+  }
+}
+
+function setup() {
+  createCanvas(700, 550);
+  imageMode(CENTER);
+  rectMode(CENTER);
+  pathKey = "RRUUUUUUURRRRDDDDRRRRUUUUUUURRRRDDDDDDDDRRR"
+  path = new Path(pathKey,20,500,40);
+  hits = 0
+  enemies = [];
+  game = new Game();
+  angleToMob = 0
+  
+  createEnemy();
+  setInterval(createEnemy, 400);
+  setInterval(shoots, 500)
+  turret = new Turret(340,300)
+}
+
+function preload() {
+  img = loadImage("assets/images/turret.png");
+  img2 = loadImage("assets/images/bullet.png");
+}
+
+function createEnemy() {
+  print("Creating enemy")
+  var newEnemy = new Enemy(path.x, path.y);
+  newEnemy.setDirections(pathKey);
+  enemies.push(newEnemy);
+}
+
+function shoots() {
+  var target = targetEnemy();
+  if (!target) return
+  target.hit()
+  push()
+  fill(300,100,0)
+  rect(350,100,100,100)
+  pop()
+}
+
+function targetEnemy() {
+  var enemiesAlive = enemies.filter(enemy => enemy.alive);
+  
+  if(enemiesAlive.length == 0) return;
+  var enemyToShoot = enemiesAlive[0];
+  return enemyToShoot;
+}
+
+
+function draw() {
+  background(200, 220);
+  path.draw();
+  
+  turret.draw()
+
+  enemies.map(enemy => {
+    enemy.draw();
+    enemy.move()
+  })
+
+    game.draw();
+
+  var enemyToShoot = targetEnemy();
+  if(!enemyToShoot) return;
+  let dx = enemyToShoot.x - turret.x;
+  let dy = enemyToShoot.y - turret.y;
+  angleToMob = atan2(dy, dx);
+  
 }
