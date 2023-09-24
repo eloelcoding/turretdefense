@@ -1,0 +1,5 @@
+fastapi==0.100.0
+uvicorn
+uvicorn==0.22.0
+pandas==2.0.3
+SQLAlchemy==2.0.19
